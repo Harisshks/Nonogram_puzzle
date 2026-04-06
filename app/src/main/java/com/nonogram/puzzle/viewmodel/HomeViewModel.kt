@@ -4,7 +4,9 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.nonogram.puzzle.data.db.AppDatabase
+import com.nonogram.puzzle.data.model.PuzzleCategory
 import com.nonogram.puzzle.data.preferences.UserPreferences
+import com.nonogram.puzzle.data.progress.ProgressManager
 import com.nonogram.puzzle.data.repository.PuzzleRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,6 +28,15 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getDatabase(application)
     private val prefs = UserPreferences(application)
     private val repository = PuzzleRepository(db.puzzleDao(), prefs)
+    private val progressManager = ProgressManager(prefs)
+
+    private val unlockedMaxByCategory = PuzzleCategory.entries.associateWith { cat ->
+        progressManager.highestUnlockedLevelFlow(cat.name)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1)
+    }
+
+    fun unlockedMaxLevel(category: PuzzleCategory): StateFlow<Int> =
+        unlockedMaxByCategory.getValue(category)
 
     val completedCount: StateFlow<Int> = repository.getCompletedCount()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
@@ -78,6 +89,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         loadTodayGoals()
+        viewModelScope.launch {
+            progressManager.migrateFromLegacyCompletions(repository.getCompletedPuzzleIds())
+        }
         viewModelScope.launch {
             repository.getAllProgress().collect { list ->
                 _completedPuzzleIds.value =

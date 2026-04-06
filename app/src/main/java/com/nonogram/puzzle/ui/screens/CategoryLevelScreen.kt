@@ -56,6 +56,7 @@ fun CategoryLevelScreen(
 ) {
     val context = LocalContext.current
     val completedIds by homeViewModel.completedPuzzleIds.collectAsStateWithLifecycle()
+    val unlockedMax by homeViewModel.unlockedMaxLevel(category).collectAsStateWithLifecycle()
     val puzzles = PuzzleData.getByCategory(category)
     val accentColor = Color(category.colorDark)
     val completedInCat = puzzles.count { it.id in completedIds }
@@ -192,12 +193,14 @@ fun CategoryLevelScreen(
                 itemsIndexed(puzzles, key = { _, p -> p.id }) { index, puzzle ->
                     val isCompleted = puzzle.id in completedIds
                     val isUnlocked = PuzzleData.isLevelUnlocked(
-                        puzzle.id,
-                        category,
-                        completedIds
+                        puzzle.levelNumber,
+                        unlockedMax
                     )
-                    val isNext = !isCompleted && isUnlocked &&
-                        (index == 0 || puzzles[index - 1].id in completedIds)
+                    val nextIndex = puzzles.indexOfFirst { p ->
+                        p.id !in completedIds &&
+                            PuzzleData.isLevelUnlocked(p.levelNumber, unlockedMax)
+                    }
+                    val isNext = nextIndex >= 0 && index == nextIndex
 
                     LevelButton(
                         level = puzzle.levelNumber,

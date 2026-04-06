@@ -11,6 +11,7 @@ import com.nonogram.puzzle.data.model.CellState
 import com.nonogram.puzzle.data.model.Puzzle
 import com.nonogram.puzzle.data.model.PuzzleProgress
 import com.nonogram.puzzle.data.preferences.UserPreferences
+import com.nonogram.puzzle.data.progress.ProgressManager
 import com.nonogram.puzzle.data.repository.PuzzleRepository
 import com.nonogram.puzzle.utils.PuzzleData
 import com.nonogram.puzzle.utils.PuzzleValidator
@@ -32,6 +33,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getDatabase(application)
     private val prefs = UserPreferences(application)
     private val repository = PuzzleRepository(db.puzzleDao(), prefs)
+    private val progressManager = ProgressManager(prefs)
 
     private val _puzzle = MutableStateFlow<Puzzle?>(null)
     val puzzle: StateFlow<Puzzle?> = _puzzle.asStateFlow()
@@ -74,6 +76,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private var rowDinged = BooleanArray(0)
     private var colDinged = BooleanArray(0)
 
+    /**
+     * When true, the player opened a puzzle that was already completed (replay).
+     * We must not write partial [saveProgress] to Room or it replaces the completed row
+     * and the level select screen loses completion / "next" state.
+     */
+    private var replayingCompletedPuzzle = false
+
     private val gson = Gson()
 
     fun loadPuzzle(puzzleId: Int, isDaily: Boolean = false) {
@@ -93,6 +102,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             _stars.value = 0
             _outOfLives.value = false
             val saved = repository.getProgress(puzzleId)
+            replayingCompletedPuzzle = saved?.isCompleted == true
             if (saved != null && !saved.isCompleted) {
                 _grid.value = restoreGrid(puzzle.gridSize, saved.cellStates)
                 _timer.value = saved.timeSpent
@@ -267,6 +277,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun resetPuzzle() {
         val puzzle = _puzzle.value ?: return
+        replayingCompletedPuzzle = false
         viewModelScope.launch {
             repository.deleteProgress(puzzle.id)
         }
@@ -313,6 +324,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 saveCompletedProgress()
                 repository.incrementTotalCompleted()
                 repository.updateStreakOnPlay()
+                if (!isDailySession) {
+                    progressManager.onLevelCompleted(
+                        puzzle.category.name,
+                        puzzle.levelNumber
+                    )
+                }
             }
         }
     }
@@ -326,6 +343,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun saveProgress() {
         val puzzle = _puzzle.value ?: return
         if (_isCompleted.value) return
+        if (replayingCompletedPuzzle) return
         repository.saveProgress(
             PuzzleProgress(
                 puzzleId = puzzle.id,

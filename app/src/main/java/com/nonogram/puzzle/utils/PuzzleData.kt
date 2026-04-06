@@ -124,15 +124,12 @@ object PuzzleData {
 
     fun getById(id: Int): Puzzle? = all.find { it.id == id }
 
+    /**
+     * @param unlockedMaxLevel Highest level number that is unlocked (inclusive).
+     * Progress is tracked separately and never decreases; replaying an old level does not lock later levels.
+     */
     fun isLevelUnlocked(
-        puzzleId: Int,
-        category: PuzzleCategory,
-        completedIds: Set<Int>
-    ): Boolean {
-        val puzzles = getByCategory(category)
-        val index = puzzles.indexOfFirst { it.id == puzzleId }
-        if (index < 0) return false
-        if (index == 0) return true
-        return puzzles[index - 1].id in completedIds
-    }
+        puzzleLevelNumber: Int,
+        unlockedMaxLevel: Int
+    ): Boolean = puzzleLevelNumber <= unlockedMaxLevel
 }

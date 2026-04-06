@@ -100,9 +100,6 @@ fun WinScreen(
         }
     }
 
-    val levelsSolvedToday by homeViewModel.levelsSolvedToday.collectAsStateWithLifecycle()
-    val hintsUsedToday by homeViewModel.hintsUsedToday.collectAsStateWithLifecycle()
-
     LaunchedEffect(Unit) {
         homeViewModel.recordLevelSolvedToday()
     }
@@ -115,8 +112,6 @@ fun WinScreen(
         puzzleId = puzzleId,
         time = time,
         errors = errors,
-        levelsSolvedToday = levelsSolvedToday,
-        hintsUsedToday = hintsUsedToday,
         isDailyPuzzle = isDailyPuzzle,
         onNextPuzzle = onNextPuzzle,
         onHome = onHome
@@ -128,8 +123,6 @@ fun WinScreenContent(
     puzzleId: Int,
     time: Long,
     errors: Int,
-    levelsSolvedToday: Int,
-    hintsUsedToday: Int,
     isDailyPuzzle: Boolean,
     onNextPuzzle: () -> Unit,
     onHome: () -> Unit
@@ -338,69 +331,6 @@ fun WinScreenContent(
                                 fontSize = 11.sp,
                                 color = TextWhite.copy(alpha = 0.8f)
                             )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Color.White.copy(alpha = 0.12f),
-                            RoundedCornerShape(16.dp)
-                        )
-                        .padding(16.dp)
-                ) {
-                    Column {
-                        Text(
-                            "Today's Goals",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White.copy(alpha = 0.9f)
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    "$levelsSolvedToday",
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = Color.White
-                                )
-                                Text(
-                                    "Levels Today",
-                                    fontSize = 10.sp,
-                                    color = Color.White.copy(alpha = 0.75f)
-                                )
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .width(1.dp)
-                                    .height(40.dp)
-                                    .background(Color.White.copy(alpha = 0.2f))
-                            )
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    "$hintsUsedToday",
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = Color.White
-                                )
-                                Text(
-                                    "Hints Used",
-                                    fontSize = 10.sp,
-                                    color = Color.White.copy(alpha = 0.75f)
-                                )
-                            }
                         }
                     }
                 }

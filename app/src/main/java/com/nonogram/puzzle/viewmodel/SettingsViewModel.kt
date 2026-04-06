@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.nonogram.puzzle.data.db.AppDatabase
 import com.nonogram.puzzle.data.preferences.UserPreferences
+import com.nonogram.puzzle.data.progress.ProgressManager
 import com.nonogram.puzzle.data.repository.PuzzleRepository
 import com.nonogram.puzzle.utils.SoundManager
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,6 +18,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val db = AppDatabase.getDatabase(application)
     private val prefs = UserPreferences(application)
     private val repository = PuzzleRepository(db.puzzleDao(), prefs)
+    private val progressManager = ProgressManager(prefs)
 
     val soundEnabled: StateFlow<Boolean> = repository.soundEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
@@ -65,6 +67,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun resetAllProgress() {
         viewModelScope.launch {
             repository.clearAllProgress()
+            progressManager.clearAllCategoryProgress()
         }
     }
 

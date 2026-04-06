@@ -8,7 +8,10 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.nonogram.puzzle.data.model.PuzzleCategory
+import com.nonogram.puzzle.utils.PuzzleData
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 
@@ -152,6 +155,53 @@ class UserPreferences(private val context: Context) {
                 prefs[KEY_HINTS_USED_TODAY] = 1
             } else {
                 prefs[KEY_HINTS_USED_TODAY] = (prefs[KEY_HINTS_USED_TODAY] ?: 0) + 1
+            }
+        }
+    }
+
+    // ── Per-category level unlock (progress_<category>) — same DataStore as above ──
+
+    private fun categoryProgressKey(category: String) =
+        intPreferencesKey("progress_${category.lowercase()}")
+
+    fun categoryHighestUnlockedLevelFlow(categoryName: String): Flow<Int> =
+        context.userDataStore.data.map { prefs ->
+            prefs[categoryProgressKey(categoryName)] ?: 1
+        }
+
+    suspend fun getCategoryHighestUnlockedLevel(category: String): Int =
+        categoryHighestUnlockedLevelFlow(category).first()
+
+    suspend fun saveCategoryProgressIfGreater(category: String, newLevel: Int) {
+        val coerced = newLevel.coerceAtLeast(1)
+        context.userDataStore.edit { prefs ->
+            val cur = prefs[categoryProgressKey(category)] ?: 1
+            if (coerced > cur) {
+                prefs[categoryProgressKey(category)] = coerced
+            }
+        }
+    }
+
+    suspend fun onCategoryLevelCompleted(category: String, level: Int) {
+        saveCategoryProgressIfGreater(category, level + 1)
+    }
+
+    suspend fun migrateCategoryProgressFromLegacyCompletions(completedPuzzleIds: Set<Int>) {
+        for (cat in PuzzleCategory.entries) {
+            val puzzles = PuzzleData.getByCategory(cat)
+            val maxCompleted = puzzles
+                .filter { it.id in completedPuzzleIds }
+                .maxOfOrNull { it.levelNumber }
+                ?: 0
+            val target = (maxCompleted + 1).coerceAtLeast(1)
+            saveCategoryProgressIfGreater(cat.name, target)
+        }
+    }
+
+    suspend fun clearAllCategoryProgressKeys() {
+        context.userDataStore.edit { prefs ->
+            PuzzleCategory.entries.forEach { cat ->
+                prefs.remove(categoryProgressKey(cat.name))
             }
         }
     }
